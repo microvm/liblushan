@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 
 #include "liblushan.h"
 
@@ -12,7 +14,7 @@ void my_handler(LSRegState *state) {
     printf("Hi! I am the trap handler!\n");
 
     for (i=0; i<16; i++) {
-        printf("%s = 0x%lx\n", reg_names[i], state->gpr[i]);
+        printf("%s = 0x%" PRIx64 "\n", reg_names[i], state->gpr[i]);
     }
 
     for (i=0; i<8; i++) {
@@ -21,7 +23,7 @@ void my_handler(LSRegState *state) {
                 state->xmm[i][2], state->xmm[i][3]);
     }
 
-    printf("return address = 0x%lx\n", state->rip);
+    printf("return address = 0x%" PRIx64 "\n", state->rip);
 
     return;
 }
@@ -30,9 +32,10 @@ void set_handler() {
     ls_handler = my_handler;
 }
 
-int fac(int n) {
+int fac(volatile int n) {
     ls_trap();
-    int i,p=1;
+    int i;
+    volatile int p=1;
     for (i=1; i<=n; i++) {
         p *= i;
     }
