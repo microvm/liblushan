@@ -1,6 +1,6 @@
 .text
 .globl _ls_trap
-.align 16
+.align 4
 _ls_trap:
   // RSP is 8-byte aligned but not 16-byte aligned.
   subq $0x108, %rsp    // sizeof(LSRegState) = 0x108
