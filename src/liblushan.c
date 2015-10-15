@@ -28,8 +28,8 @@ void ls_stack_free(LSStack *stack) {
  *  &ls_sbf_start
  *  `func`                  <- 16-byte aligned. SP is here in *  ls_sbf_start
  *  `arg`                   <-
- *  0 (cusion)              <- 16-byte aligned
- *  0 (cusion)              <- 
+ *  0 (cushion)             <- 16-byte aligned
+ *  0 (cushion)             <- 
  * ------------------       <- 16-byte aligned (begin + size) 
  *
  * When `func` starts, it will think it is called by a function at 0x000000000.
@@ -37,8 +37,8 @@ void ls_stack_free(LSStack *stack) {
 void ls_stack_init(LSStack *stack, LSStackBottomFunc func, LSPtr arg) {
     uintptr_t *sp = (uintptr_t*)((unsigned char*)stack->begin+stack->size);
 
-    *(--sp) = 0;   // cusion
-    *(--sp) = 0;   // cusion
+    *(--sp) = 0;   // cushion
+    *(--sp) = 0;   // cushion
     *(--sp) = (uintptr_t)arg;
     *(--sp) = (uintptr_t)func;
     *(--sp) = (uintptr_t)ls_sbf_start;
@@ -48,6 +48,48 @@ void ls_stack_init(LSStack *stack, LSStackBottomFunc func, LSPtr arg) {
     *(--sp) = 0;
     *(--sp) = 0;
     *(--sp) = 0;
+
+    stack->sp = sp;
+}
+
+/*
+ * The stack layout after initialisation
+ *
+ * (low addr)
+ * ------------------
+ *  &ls_swap_in             <- SP. This always points to the "appropriate" func,
+ *  0 (alignment)                  thus allows multiple stack-top impls.
+ *  0 (r15)
+ *  0 (r14)                 <- 16-byte aligned
+ *  0 (r13)
+ *  0 (r12)                 <- 16-byte aligned
+ *  0 (rbx)                 
+ *  0 (rbp)                 <- 16-byte aligned
+ *  &ls_sbf_start
+ *  `func`                  <- 16-byte aligned. SP is here in *  ls_sbf_start
+ *  `arg`                   <-
+ *  0 (cushion)             <- 16-byte aligned
+ *  0 (cushion)             <- 
+ * ------------------       <- 16-byte aligned (begin + size) 
+ *
+ * When `func` starts, it will think it is called by a function at 0x000000000.
+ */
+void ls_stack_init_alt(LSStack *stack, LSStackBottomFunc func, LSPtr arg) {
+    uintptr_t *sp = (uintptr_t*)((unsigned char*)stack->begin+stack->size);
+
+    *(--sp) = 0;   // cushion
+    *(--sp) = 0;   // cushion
+    *(--sp) = (uintptr_t)arg;
+    *(--sp) = (uintptr_t)func;
+    *(--sp) = (uintptr_t)ls_sbf_start;
+    *(--sp) = 0;
+    *(--sp) = 0;
+    *(--sp) = 0;
+    *(--sp) = 0;
+    *(--sp) = 0;
+    *(--sp) = 0;
+    *(--sp) = 0;
+    *(--sp) = (uintptr_t)ls_swap_in;
 
     stack->sp = sp;
 }

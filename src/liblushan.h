@@ -83,4 +83,9 @@ typedef void (*LSTrapHandler)(LSRegState *state);
 // Set this handler and it will be called back.
 LSTrapHandler ls_handler;
 
+// An alternative implementation
+void ls_stack_init_alt(LSStack *stack, LSStackBottomFunc func, LSPtr arg);
+void ls_swap_out(LSStack *cur_stack, LSStack *new_stack);
+void ls_swap_in();
+
 // vim: tw=80 ts=4 sw=4 sws=4
