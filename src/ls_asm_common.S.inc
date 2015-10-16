@@ -16,7 +16,7 @@ CNAME(\n):
 
 #elif defined (LS_OSX)
 
-#define CNAME(n) _n
+#define CNAME(n) _##n
 
   .macro begin_func n
   .text

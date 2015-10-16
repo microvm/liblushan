@@ -40,10 +40,6 @@ void ls_stack_init(LSStack *stack, LSStackBottomFunc func, LSPtr arg);
 // space for the SP so that we can swap back to the old stack again.
 void ls_stack_swap(LSStack *cur_stack, LSStack *new_stack);
 
-// This function is a trampoline to start the stack-bottom function. Should not
-// be called from C.
-void ls_sbf_start();
-
 // Basically reinventing mcontext_t, which is supposed to be private to libc.
 // This structure should match the stack-top structure.
 typedef struct LSRegState {
@@ -83,9 +79,13 @@ typedef void (*LSTrapHandler)(LSRegState *state);
 // Set this handler and it will be called back.
 LSTrapHandler ls_handler;
 
-// An alternative implementation
-void ls_stack_init_alt(LSStack *stack, LSStackBottomFunc func, LSPtr arg);
-void ls_swap_out(LSStack *cur_stack, LSStack *new_stack);
+// The following functions should not be called directly from C.
+
+// The "stack-top routine". It resumes a suspended stack.
 void ls_swap_in();
+
+// This function is a trampoline to start the stack-bottom function.
+void ls_sbf_start();
+
 
 // vim: tw=80 ts=4 sw=4 sws=4

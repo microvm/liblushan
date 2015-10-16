@@ -1,8 +1,6 @@
-.text
-.globl ls_trap
-.type ls_trap,@function
-.align 16
-ls_trap:
+#include "ls_asm_common.S.inc"
+
+begin_func ls_trap
   // RSP is 8-byte aligned but not 16-byte aligned.
   subq $0x108, %rsp    // sizeof(LSRegState) = 0x108
 
@@ -43,7 +41,7 @@ ls_trap:
   // first arg: state
   movq %rsp, %rdi
 
-  movq ls_handler(%rip), %rax
+  movq CNAME(ls_handler)(%rip), %rax
   callq *%rax
 
   movq 0x0(%rsp),  %rax
@@ -76,3 +74,4 @@ ls_trap:
 
   addq $0x108, %rsp
   ret
+end_func

@@ -1,6 +1,6 @@
 #include "ls_asm_common.S.inc"
 
-begin_func ls_swap_out
+begin_func ls_stack_swap
   .cfi_startproc
   pushq %rbp
   .cfi_def_cfa_offset 16
@@ -29,7 +29,7 @@ begin_func ls_swap_out
   movq (%rsi), %rsp
   ret
   .cfi_endproc
-end_func ls_swap_out
+end_func ls_stack_swap
 
 begin_func ls_swap_in
 __ls_swap_in_begin:   // local label
