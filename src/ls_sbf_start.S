@@ -9,5 +9,6 @@
 begin_func ls_sbf_start
   popq %rsi
   popq %rdi
-  callq *%rsi
+  pushq $0  // explicitly use 0 as the "return address" of func, the "jumpee"
+  jmp *%rsi // jump to func.
 end_func ls_sbf_start
