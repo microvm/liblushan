@@ -1,6 +1,17 @@
-OS = ""
+ifndef OS
+    uname := $(shell uname)
+    ifeq ($(uname),Darwin)
+	OS = OSX
+    else
+    ifeq ($(uname),Linux)
+	OS = LINUX
+    else
+	$(error Unrecognized operating system $(uname))
+    endif
+    endif
+endif
 
-ASMS := $(wildcard *.S)
+ASMS = $(wildcard *.S)
 
 TEST_SRCS = $(wildcard test_*.c)
 
@@ -16,3 +27,8 @@ tests: $(TEST_OUTS)
 
 %.out: %.c $(DEPS)
 	$(CC) $(CFLAGS) -D LS_$(OS) -o $@ $< liblushan.c $(ASMS)
+
+.PHONY: clean
+
+clean:
+	rm *.out
