@@ -74,4 +74,4 @@ begin_func ls_trap
 
   addq $0x108, %rsp
   ret
-end_func
+end_func ls_trap

@@ -5,6 +5,7 @@ ifndef OS
     else
     ifeq ($(uname),Linux)
 	OS = LINUX
+	LDFLAGS = -lunwind-x86_64
     else
 	$(error Unrecognized operating system $(uname))
     endif
@@ -26,7 +27,7 @@ all: tests
 tests: $(TEST_OUTS)
 
 %.out: %.c $(DEPS)
-	$(CC) $(CFLAGS) -D LS_$(OS) -o $@ $< liblushan.c $(ASMS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -D LS_$(OS) -o $@ $< liblushan.c $(ASMS)
 
 .PHONY: clean
 

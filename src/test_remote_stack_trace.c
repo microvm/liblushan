@@ -4,6 +4,11 @@
 
 #include <libunwind.h>
 
+#ifdef LS_LINUX
+#define __USE_GNU
+#include <ucontext.h>
+#endif
+
 #include "liblushan.h"
 
 #define lprintf(fmt, ...) printf("[%s] " fmt, __func__, ## __VA_ARGS__)
@@ -13,6 +18,7 @@ LSStack mainStack, newStack;
 void translate_context(void *sp, unw_context_t *ctx) {
     uint64_t *s = (uint64_t*)sp;
 
+#if defined(LS_OSX)
     ctx->data[15] = s[2];     // r15
     ctx->data[14] = s[3];     // r14
     ctx->data[13] = s[4];     // r13
@@ -21,6 +27,19 @@ void translate_context(void *sp, unw_context_t *ctx) {
     ctx->data[ 6] = s[7];     // rbp
     ctx->data[16] = s[8];     // rip (return address)
     ctx->data[ 7] = (uint64_t)&s[9];    // rsp
+#elif defined(LS_LINUX)
+    uint64_t *c = (uint64_t*)ctx;
+
+    // see ucontext_i.h in libunwind
+    c[0x60] = s[2];     // r15
+    c[0x58] = s[3];     // r14
+    c[0x50] = s[4];     // r13
+    c[0x48] = s[5];     // r12
+    c[0x80] = s[6];     // rbx
+    c[0x78] = s[7];     // rbp
+    c[0xa8] = s[8];     // rip (return address)
+    c[0xa0] = (uint64_t)&s[9];    // rsp
+#endif
 
     lprintf("I think the rsp should be %p after returning.\n", s+9);
 }
