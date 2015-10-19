@@ -42,7 +42,7 @@ void ls_stack_swap_top_to_unw_context(void *sp, unw_context_t *ctx) {
     lprintf("rbx = 0x%llx\n", s[6]);
     lprintf("rbp = 0x%llx\n", s[7]);
     lprintf("rip = 0x%llx\n", s[8]);
-    lprintf("rsp = 0x%llx\n", &s[9]);
+    lprintf("rsp = 0x%llx\n", (uint64_t)&s[9]);
 
     lprintf("I think the rsp should be %p after returning.\n", s+9);
 }
