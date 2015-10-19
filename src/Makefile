@@ -12,22 +12,26 @@ ifndef OS
     endif
 endif
 
-ASMS = $(wildcard *.S)
+ASMS = $(filter-out $(wildcard test_*.S), $(wildcard *.S))
 
 TEST_SRCS = $(wildcard test_*.c)
 
 TEST_OUTS = $(TEST_SRCS:.c=.out)
 
-DEPS = liblushan.c liblushan.h ls_asm_common.S.inc $(ASMS)
+DEPS_C = liblushan.c libunwind-support.c $(ASMS)
+DEPS_H = liblushan.h libunwind-support.h ls_asm_common.S.inc
+DEPS = $(DEPS_C) $(DEPS_H)
 
+.SECONDEXPANSION:
+
+.PHONY: all
 all: tests
 
 .PHONY: tests
-
 tests: $(TEST_OUTS)
 
-%.out: %.c %.S $(DEPS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -D LS_$(OS) -o $@ $< liblushan.c $(ASMS)
+$(TEST_OUTS): %.out: %.c $$(wildcard $$*.S) $(DEPS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -D LS_$(OS) -o $@ $< $(wildcard $*.S) $(DEPS_C)
 
 .PHONY: clean
 

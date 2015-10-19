@@ -1,3 +1,6 @@
+#ifndef __LIBLUSHAN_H__
+#define __LIBLUSHAN_H__
+
 #include <stdint.h>
 
 //// Basic types
@@ -87,5 +90,6 @@ void ls_swap_in();
 // This function is a trampoline to start the stack-bottom function.
 void ls_sbf_start();
 
+#endif // __LIBLUSHAN_H__
 
 // vim: tw=80 ts=4 sw=4 sws=4

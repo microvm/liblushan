@@ -4,44 +4,13 @@
 
 #include <libunwind.h>
 
-#ifdef LS_LINUX
-#include <ucontext.h>
-#endif
-
 #include "liblushan.h"
+#include "libunwind-support.h"
 
 #define lprintf(fmt, ...) printf("[%s] " fmt, __func__, ## __VA_ARGS__)
 
 LSStack mainStack, newStack;
 
-void translate_context(void *sp, unw_context_t *ctx) {
-    uint64_t *s = (uint64_t*)sp;
-
-#if defined(LS_OSX)
-    ctx->data[15] = s[2];     // r15
-    ctx->data[14] = s[3];     // r14
-    ctx->data[13] = s[4];     // r13
-    ctx->data[12] = s[5];     // r12
-    ctx->data[ 1] = s[6];     // rbx
-    ctx->data[ 6] = s[7];     // rbp
-    ctx->data[16] = s[8];     // rip (return address)
-    ctx->data[ 7] = (uint64_t)&s[9];    // rsp
-#elif defined(LS_LINUX)
-    uint64_t *c = (uint64_t*)ctx;
-
-    // see ucontext_i.h in libunwind
-    c[0x60] = s[2];     // r15
-    c[0x58] = s[3];     // r14
-    c[0x50] = s[4];     // r13
-    c[0x48] = s[5];     // r12
-    c[0x80] = s[6];     // rbx
-    c[0x78] = s[7];     // rbp
-    c[0xa8] = s[8];     // rip (return address)
-    c[0xa0] = (uint64_t)&s[9];    // rsp
-#endif
-
-    lprintf("I think the rsp should be %p after returning.\n", s+9);
-}
 
 void spy3() {
     lprintf("My return address is %p\n", __builtin_return_address(0));
@@ -49,11 +18,7 @@ void spy3() {
 
 void* g_ret_addr;
 
-struct frame_descriptor {
-    uint64_t rbp, rbx, r12, r13, r14, r15, rip, rsp;
-};
-
-void get_f_frame(LSStack *stack, struct frame_descriptor *desc) {
+void get_f_frame(LSStack *stack, LSSimpleFrameState *sfs) {
     unw_cursor_t cursor;
     unw_context_t uc;
     unw_word_t ip, sp;
@@ -63,7 +28,7 @@ void get_f_frame(LSStack *stack, struct frame_descriptor *desc) {
     lprintf("Making my own context...\n");
     memset(&uc, 0, sizeof(uc));
 
-    translate_context(stack->sp, &uc);
+    ls_stack_swap_top_to_unw_context(stack->sp, &uc);
 
     lprintf("Initialising cursor...\n");
     unw_init_local(&cursor, &uc);
@@ -79,14 +44,7 @@ void get_f_frame(LSStack *stack, struct frame_descriptor *desc) {
             lprintf("Found f()!\n");
             lprintf("Now I am in f(). Restoring callee-saved registers...\n");
 
-            unw_get_reg(&cursor, UNW_X86_64_RBP, &desc->rbp);
-            unw_get_reg(&cursor, UNW_X86_64_RBX, &desc->rbx);
-            unw_get_reg(&cursor, UNW_X86_64_R12, &desc->r12);
-            unw_get_reg(&cursor, UNW_X86_64_R13, &desc->r13);
-            unw_get_reg(&cursor, UNW_X86_64_R14, &desc->r14);
-            unw_get_reg(&cursor, UNW_X86_64_R15, &desc->r15);
-            unw_get_reg(&cursor, UNW_REG_IP, &desc->rip);
-            unw_get_reg(&cursor, UNW_X86_64_RSP, &desc->rsp);
+            ls_unw_cursor_to_simple_frame_state(&cursor, sfs);
             return;
         }
 
@@ -102,19 +60,19 @@ void get_f_frame(LSStack *stack, struct frame_descriptor *desc) {
 // This function simply pops a value and return it. Implemented in asm.
 void simple_returner();
 
-void cut_above_f(struct frame_descriptor *desc, int new_rv) {
+void cut_above_f(LSSimpleFrameState *sfs, int new_rv) {
     lprintf("f() state:\n");
     lprintf("rbx=%p, rbp=%p, r12=%p, r13=%p, r14=%p, r15=%p, rip=%p, rsp=%p\n",
-            (void*)desc->rbx, (void*)desc->rbp, (void*)desc->r12, (void*)desc->r13,
-            (void*)desc->r14, (void*)desc->r15, (void*)desc->rip, (void*)desc->rsp);
+            (void*)sfs->rbx, (void*)sfs->rbp, (void*)sfs->r12, (void*)sfs->r13,
+            (void*)sfs->r14, (void*)sfs->r15, (void*)sfs->rip, (void*)sfs->rsp);
 
     // Current state of f()'s frame:
     //
     // +------------+
     // |(g frame)   |
-    // |desc->rip   |
+    // |sfs->rip    |
     // +------------+
-    // |(f frame)   |    <--- desc->rsp
+    // |(f frame)   |    <--- sfs->rsp
     // |...         |
     // +------------+
     //
@@ -123,31 +81,31 @@ void cut_above_f(struct frame_descriptor *desc, int new_rv) {
     // +------------------------+
     // |ls_swap_in              |    <--- mainStack->sp
     // |0                       |
-    // |desc->r15               |
-    // |desc->r14               |
-    // |desc->r13               |
-    // |desc->r12               |
-    // |desc->rbx               |
-    // |desc->rbp               |
+    // |sfs->r15                |
+    // |sfs->r14                |
+    // |sfs->r13                |
+    // |sfs->r12                |
+    // |sfs->rbx                |
+    // |sfs->rbp                |
     // |simple_returner         |
     // +------------------------+
     // |new_rv                  |
-    // |desc->rip               |
+    // |sfs->rip                |
     // +------------------------+
-    // |(f frame)               |    <--- desc->rsp
+    // |(f frame)               |    <--- sfs->rsp
     // |...                     |
     // +------------------------+
     
-    uint64_t *f_rsp = (uint64_t*)desc->rsp;
-    f_rsp[- 1] = desc->rip;
+    uint64_t *f_rsp = (uint64_t*)sfs->rsp;
+    f_rsp[- 1] = sfs->rip;
     f_rsp[- 2] = (uint64_t)new_rv;
     f_rsp[- 3] = (uint64_t)simple_returner;
-    f_rsp[- 4] = desc->rbp;
-    f_rsp[- 5] = desc->rbx;
-    f_rsp[- 6] = desc->r12;
-    f_rsp[- 7] = desc->r13;
-    f_rsp[- 8] = desc->r14;
-    f_rsp[- 9] = desc->r15;
+    f_rsp[- 4] = sfs->rbp;
+    f_rsp[- 5] = sfs->rbx;
+    f_rsp[- 6] = sfs->r12;
+    f_rsp[- 7] = sfs->r13;
+    f_rsp[- 8] = sfs->r14;
+    f_rsp[- 9] = sfs->r15;
     f_rsp[-10] = 0LL;
     f_rsp[-11] = (uint64_t)ls_swap_in;
 
@@ -158,14 +116,14 @@ void spy(void *arg) {
     lprintf("Hi! I will make g() return early.\n");
     lprintf("My return address is %p\n", __builtin_return_address(0));
 
-    struct frame_descriptor desc;
+    LSSimpleFrameState sfs;
 
     lprintf("Looking for g()'s parent frame...\n");
-    get_f_frame(&mainStack, &desc);
+    get_f_frame(&mainStack, &sfs);
 
     int new_rv = 12345678;
     lprintf("Start replacement. I'll let it return %d\n", new_rv);
-    cut_above_f(&desc, new_rv);
+    cut_above_f(&sfs, new_rv);
 
     lprintf("Bye!\n");
     ls_stack_swap(&newStack, &mainStack);
