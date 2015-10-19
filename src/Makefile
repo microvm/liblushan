@@ -26,7 +26,7 @@ all: tests
 
 tests: $(TEST_OUTS)
 
-%.out: %.c $(DEPS)
+%.out: %.c %.S $(DEPS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -D LS_$(OS) -o $@ $< liblushan.c $(ASMS)
 
 .PHONY: clean

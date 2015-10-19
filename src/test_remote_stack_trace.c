@@ -5,7 +5,6 @@
 #include <libunwind.h>
 
 #ifdef LS_LINUX
-#define __USE_GNU
 #include <ucontext.h>
 #endif
 
@@ -44,29 +43,31 @@ void translate_context(void *sp, unw_context_t *ctx) {
     lprintf("I think the rsp should be %p after returning.\n", s+9);
 }
 
-void spy3(void *arg) {
+void spy3() {
     lprintf("My return address is %p\n", __builtin_return_address(0));
 }
 
-void spy2(void *arg) {
-    lprintf("Hi! I will print the stack trace.\n");
-    lprintf("My return address is %p\n", __builtin_return_address(0));
+void print_stack_trace(LSStack *stack) {
     unw_cursor_t cursor;
     unw_context_t uc;
     unw_word_t ip, sp;
     int frameNo = 0;
 
-    spy3(arg);
+    spy3();
     
-    //lprintf("Getting context...\n");
-    //unw_getcontext(&uc);
-    
-    lprintf("Making my own context...\n");
-    memset(&uc, 0, sizeof(uc));
+    if (stack == NULL) {
+        // The current stack.
+        lprintf("Getting context...\n");
+        unw_getcontext(&uc);
+    } else {
+        // The other stack.
+        lprintf("Making my own context...\n");
+        memset(&uc, 0, sizeof(uc));
 
-    translate_context(mainStack.sp, &uc);
+        translate_context(stack->sp, &uc);
+    }
 
-    spy3(arg);
+    spy3();
 
     lprintf("Initialising cursor...\n");
     unw_init_local(&cursor, &uc);
@@ -79,7 +80,20 @@ void spy2(void *arg) {
         lprintf ("  ip = %lx, sp = %lx\n", (long) ip, (long) sp);
 
         frameNo++;
-    }while (unw_step(&cursor) > 0) ;
+    } while (unw_step(&cursor) > 0) ;
+}
+
+void spy2(void *arg) {
+    lprintf("Hi! I will print the stack trace.\n");
+    lprintf("My return address is %p\n", __builtin_return_address(0));
+
+    lprintf("Printing stack trace of the spy...\n");
+    print_stack_trace(NULL);
+
+    lprintf("Printing stack trace of the main stack...\n");
+    print_stack_trace(&mainStack);
+
+    lprintf("Bye!\n");
 }
 
 void spy(void *arg) {
