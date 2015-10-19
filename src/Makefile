@@ -1,3 +1,4 @@
+CFLAGS += -std=gnu11
 ifndef OS
     uname := $(shell uname)
     ifeq ($(uname),Darwin)
@@ -5,7 +6,7 @@ ifndef OS
     else
     ifeq ($(uname),Linux)
 	OS = LINUX
-	LDFLAGS = -lunwind-x86_64
+	LDFLAGS += -lunwind -lunwind-x86_64
     else
 	$(error Unrecognized operating system $(uname))
     endif
@@ -31,7 +32,7 @@ all: tests
 tests: $(TEST_OUTS)
 
 $(TEST_OUTS): %.out: %.c $$(wildcard $$*.S) $(DEPS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -D LS_$(OS) -o $@ $< $(wildcard $*.S) $(DEPS_C)
+	$(CC) $(CFLAGS) -D LS_$(OS) -o $@ $< $(wildcard $*.S) $(DEPS_C) $(LDFLAGS)
 
 .PHONY: clean
 

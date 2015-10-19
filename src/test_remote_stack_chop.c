@@ -6,11 +6,9 @@
 
 #include "liblushan.h"
 #include "libunwind-support.h"
-
-#define lprintf(fmt, ...) printf("[%s] " fmt, __func__, ## __VA_ARGS__)
+#include "ls_debug.h"
 
 LSStack mainStack, newStack;
-
 
 void spy3() {
     lprintf("My return address is %p\n", __builtin_return_address(0));
@@ -28,6 +26,7 @@ void get_f_frame(LSStack *stack, LSSimpleFrameState *sfs) {
     lprintf("Making my own context...\n");
     memset(&uc, 0, sizeof(uc));
 
+    lprintf("Translating stack top...\n");
     ls_stack_swap_top_to_unw_context(stack->sp, &uc);
 
     lprintf("Initialising cursor...\n");

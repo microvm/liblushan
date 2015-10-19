@@ -1,4 +1,10 @@
+#ifdef LS_LINUX
+#define _GNU_SOURCE
+#include <sys/ucontext.h>
+#endif
+
 #include "libunwind-support.h"
+#include "ls_debug.h"
 
 void ls_stack_swap_top_to_unw_context(void *sp, unw_context_t *ctx) {
     uint64_t *s = (uint64_t*)sp;
@@ -13,18 +19,32 @@ void ls_stack_swap_top_to_unw_context(void *sp, unw_context_t *ctx) {
     ctx->data[16] = s[8];     // rip (return address)
     ctx->data[ 7] = (uint64_t)&s[9];    // rsp
 #elif defined(LS_LINUX)
-    uint64_t *c = (uint64_t*)ctx;
+    ucontext_t *uctx = (ucontext_t*)ctx;
+    mcontext_t *mctx = &uctx->uc_mcontext;
 
     // see ucontext_i.h in libunwind
-    c[0x60] = s[2];     // r15
-    c[0x58] = s[3];     // r14
-    c[0x50] = s[4];     // r13
-    c[0x48] = s[5];     // r12
-    c[0x80] = s[6];     // rbx
-    c[0x78] = s[7];     // rbp
-    c[0xa8] = s[8];     // rip (return address)
-    c[0xa0] = (uint64_t)&s[9];    // rsp
+    mctx->gregs[REG_R15] = s[2];     // r15
+    mctx->gregs[REG_R14] = s[3];     // r14
+    mctx->gregs[REG_R13] = s[4];     // r13
+    mctx->gregs[REG_R12] = s[5];     // r12
+    mctx->gregs[REG_RBX] = s[6];     // rbx
+    mctx->gregs[REG_RBP] = s[7];     // rbp
+    mctx->gregs[REG_RIP] = s[8];     // rip (return address)
+    mctx->gregs[REG_RSP] = (uint64_t)&s[9];    // rsp
+#else
+#error "Expect LS_OSX or LS_LINUX"
 #endif
+
+    lprintf("r15 = 0x%llx\n", s[2]);
+    lprintf("r14 = 0x%llx\n", s[3]);
+    lprintf("r13 = 0x%llx\n", s[4]);
+    lprintf("r12 = 0x%llx\n", s[5]);
+    lprintf("rbx = 0x%llx\n", s[6]);
+    lprintf("rbp = 0x%llx\n", s[7]);
+    lprintf("rip = 0x%llx\n", s[8]);
+    lprintf("rsp = 0x%llx\n", &s[9]);
+
+    lprintf("I think the rsp should be %p after returning.\n", s+9);
 }
 
 void ls_unw_cursor_to_simple_frame_state(unw_cursor_t *cursor,
